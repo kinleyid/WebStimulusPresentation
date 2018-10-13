@@ -27,8 +27,10 @@ function vSyncSystem(msPerFrame) {
         } else {
             vss.frameIdx = candidateFrameIdx; // Accounts for missed frames
         }
+        vss.frameIdxs.push(vss.frameIdx);
         if (shouldRecordTime) {
             var frameTime = vss.t0 + vss.frameIdx*vss.msPerFrame; // Regression-based estimate of the time at which changes become visible
+            // frameTime = measuredTime;
             vss.displayTimes.push(frameTime);
             if (vss.funcIdx == vss.funcList.length - 1) {
                 return;
