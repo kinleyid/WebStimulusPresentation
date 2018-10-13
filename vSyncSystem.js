@@ -42,7 +42,7 @@ function vSyncSystem(msPerFrame) {
         vss.postFrameRateCalcCallback = postFrameRateCalcCallback;
         vss.frameTimesForRegression = [];
         window.requestAnimationFrame(
-            function() { // Doubling up like this is more robust
+            function() { // Doubling up like this is more robust--else first inter-frame interval is very low
                 window.requestAnimationFrame(vss.recordFrame);
             }
         );
