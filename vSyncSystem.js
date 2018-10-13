@@ -20,12 +20,15 @@ function vSyncSystem(msPerFrame) {
         );
     }
     vss.frameLoop = function(shouldRecordTime) {
-        var currTime = performance.now();
+        var measuredTime = performance.now();
         var currFrameIdx = Math.round((currTime  - vss.t0) / vss.msPerFrame);
-        vss.frameIdxs.push(currFrameIdx);
-        currFrameIdx == vss.lastFrameIdx + 1; // What's the conclusion if these don't match?
-        vss.lastFrameIdx = currFrameIdx;
-        var currTime = performance.now();
+        if (currFrameIdx <= vss.lastFrameIdx) {
+            currFrameIdx = ++vss.lastFrameIdx;
+        } else {
+            vss.lastFrameIdx = currFrameIdx;
+        }
+        // Figure out which frameIdx we're currently on--figure out if the dynamic is one of shifts of one of debts--do it before you forget what you meant by this
+        var currTime = measuredTime;
         if (shouldRecordTime) {
             vss.displayTimes.push(currTime);
             if (vss.funcIdx == vss.funcList.length - 1) {
