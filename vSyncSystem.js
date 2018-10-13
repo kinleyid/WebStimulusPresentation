@@ -21,24 +21,23 @@ function vSyncSystem(msPerFrame) {
     }
     vss.frameLoop = function(shouldRecordTime) {
         var measuredTime = performance.now();
-        var currFrameIdx = Math.round((currTime  - vss.t0) / vss.msPerFrame);
-        if (currFrameIdx <= vss.lastFrameIdx) {
-            currFrameIdx = ++vss.lastFrameIdx;
+        var candidateFrameIdx = Math.round((measuredTime  - vss.t0) / vss.msPerFrame);
+        if (candidateFrameIdx <= vss.frameIdx) {
+            vss.frameIdx++; // No repeated frame idxs
         } else {
-            vss.lastFrameIdx = currFrameIdx;
+            vss.frameIdx = candidateFrameIdx; // Accounts for missed frames
         }
-        // Figure out which frameIdx we're currently on--figure out if the dynamic is one of shifts of one of debts--do it before you forget what you meant by this
-        var currTime = measuredTime;
-        if (shouldRecordTime) {
-            vss.displayTimes.push(currTime);
+        if (shouldRecordTime) {            
+            var frameTime = vss.t0 + vss.frameIdx*vss.msPerFrame; // Regression-based estimate of the time at which changes become visible
+            vss.displayTimes.push(frameTime);
             if (vss.funcIdx == vss.funcList.length - 1) {
                 return;
             } else {
-                vss.nextChangeTime = currTime + vss.durationList[vss.funcIdx++];
+                vss.nextChangeTime = frameTime + vss.durationList[vss.funcIdx++];
             }
         }
         var shouldRecordNextTime = false;
-        if (Math.abs(currTime + vss.msPerFrame - vss.nextChangeTime) < Math.abs(currTime + 2*vss.msPerFrame - vss.nextChangeTime)){
+        if (Math.abs(measuredTime + vss.msPerFrame - vss.nextChangeTime) < Math.abs(measuredTime + 2*vss.msPerFrame - vss.nextChangeTime)){
             setTimeout(vss.funcList[vss.funcIdx], vss.delayMs);
             shouldRecordNextTime = true;
         }
