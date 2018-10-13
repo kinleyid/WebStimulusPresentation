@@ -6,27 +6,37 @@ function vSyncSystem(msPerFrame) {
         vss.funcList = funcList;
         vss.durationList = durationList;
         vss.delayMs = delayMs;
-        vss.idx = 0;
+        vss.funcIdx = 0;
         vss.nextChangeTime = performance.now(); // forces immediate update
+        vss.frameIdxs = [];
         window.requestAnimationFrame(
             function() {
-                vss.frameLoop(false);
+                window.requestAnimationFrame( // Doubling up for robustness
+                    function() {
+                        vss.frameLoop(false);
+                    }
+                );
             }
         );
     }
     vss.frameLoop = function(shouldRecordTime) {
-        var ct = performance.now();
+        var currTime = performance.now();
+        var currFrameIdx = Math.round((currTime  - vss.t0) / vss.msPerFrame);
+        vss.frameIdxs.push(currFrameIdx);
+        currFrameIdx == vss.lastFrameIdx + 1; // What's the conclusion if these don't match?
+        vss.lastFrameIdx = currFrameIdx;
+        var currTime = performance.now();
         if (shouldRecordTime) {
-            vss.displayTimes.push(ct);
-            if (vss.idx == vss.funcList.length - 1) {
+            vss.displayTimes.push(currTime);
+            if (vss.funcIdx == vss.funcList.length - 1) {
                 return;
             } else {
-                vss.nextChangeTime = ct + vss.durationList[vss.idx++];
+                vss.nextChangeTime = currTime + vss.durationList[vss.funcIdx++];
             }
         }
         var shouldRecordNextTime = false;
-        if (Math.abs(ct + vss.msPerFrame - vss.nextChangeTime) < Math.abs(ct + 2*vss.msPerFrame - vss.nextChangeTime)){
-            setTimeout(vss.funcList[vss.idx], vss.delayMs);
+        if (Math.abs(currTime + vss.msPerFrame - vss.nextChangeTime) < Math.abs(currTime + 2*vss.msPerFrame - vss.nextChangeTime)){
+            setTimeout(vss.funcList[vss.funcIdx], vss.delayMs);
             shouldRecordNextTime = true;
         }
         window.requestAnimationFrame(
@@ -48,12 +58,12 @@ function vSyncSystem(msPerFrame) {
         );
     }
     vss.recordFrame = function() {
-        var currTime = 0, i; // Take average of multiple time points
+        var currTime  = 0, i; // Take average of multiple time points
         for (i = 0; i < vss.nTimeQueriesPerFrame; i++) {
-            currTime += performance.now(); // is there a faster way to do this?
+            currTime  += performance.now(); // is there a faster way to do this?
         }
-        currTime = currTime / vss.nTimeQueriesPerFrame;
-        vss.frameTimesForRegression.push(currTime);
+        currTime  = currTime  / vss.nTimeQueriesPerFrame;
+        vss.frameTimesForRegression.push(currTime );
         if (vss.frameTimesForRegression.length == vss.nFramesToRecord) {
             vss.computeMsPerFrame();
         } else {
