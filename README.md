@@ -1,5 +1,5 @@
 # WebStimulusPresentation
-Attempts to provide better control over when and for how long stimuli are displayed.
+Attempts to provide better control over when and for how long stimuli are displayed over the web.
 
 ## Introduction
 
