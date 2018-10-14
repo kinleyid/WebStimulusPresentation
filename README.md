@@ -11,4 +11,39 @@ There's no perfect solution to the first problem right now, but requestAnimation
 
 This library tries to solve the second problem by using requestAnimationFrame not to directly run the code that alters the DOM, but to estimate screen update times and schedule the code that alters the DOM.
 
-For example, suppose a screen updates at 60 Hz. Then when a requestAnimationFrame callback fires at some time t, it will use setTimeout to schedule DOM-altering code to run some number of milliseconds d later, 4 < d < 16.67. It will also call requestAnimationFrame again to estimate when the alterations become visible. The DOM will be altered at t + d, the alterations will become visible at roughly t + 16.67, and this time will be recorded in the new requestAnimationFrame callback. This approach should also buy you more time to alter the DOM before the screen updates, assuming <a href='https://medium.com/@paul_irish/requestanimationframe-scheduling-for-nerds-9c57f7438ef4'>the diagrams here</a> are drawn to scale.
+For example, suppose a screen updates at 60 Hz. Then when a requestAnimationFrame callback fires at some time t, it will use setTimeout to schedule DOM-altering code to run some number of milliseconds d later, d < 16.67. It will also call requestAnimationFrame again to estimate when the alterations become visible. The DOM will be altered at t + d, the alterations will become visible at roughly t + 16.67, and this time will be recorded in the new requestAnimationFrame callback. This approach should also buy you more time to alter the DOM before the screen updates, assuming <a href='https://medium.com/@paul_irish/requestanimationframe-scheduling-for-nerds-9c57f7438ef4'>the diagrams here</a> are drawn to scale.
+
+## How to use
+
+### Initializing
+
+See example.html and example.js.
+When initializing the library, call the resulting variable ```vss``` (that's how it refers to itself).
+```javascript
+var msPerFrame = 1000/60;
+var vss = new vSyncSystem(msPerFrame);
+```
+
+### Estimating frame rate
+
+The frame rate can be calculated with simple linear regression (as suggested on <a href='https://www.vsynctester.com/howtocomputevsync.html'>vsynctester.com</a>) by calling ```vss.getFrameRate```. The arguments passed in are the number of ```requestAnimationFrame``` calls to make, the number of ```performance.now``` calls per ```requestAnimationFrame``` callback, the maximum number of milliseconds by which any calculated inter-frame interval can be off from the median without causing ```getFrameRate``` to start over, and a function to call after the frame rate has been calculated:
+```javascript
+vss.getFrameRate(60, 100, 3, function(){alert('Frame rate = ' + 1000/vss.msPerFrame)});
+```
+
+### Displaying stimuli
+
+Once the frame rate has been calculated, you can create an array of functions that will alter the DOM and an array of corresponding durations (in milliseconds) that the alterations should be visible. You then pass these as arguments to ```vss.run``` along with the above-mentioned d parameter and the number of ```performance.now``` calls to make when the current time is estimated (defaults to the value passed to ```vss.getFrameRate``` or 1):
+```javascript
+function changeElement() {
+    if (textElement.textContent == 'One') {
+        textElement.textContent = 'Two';
+    } else if (textElement.textContent == 'Two') {
+        textElement.textContent = 'One';
+    }
+}
+var funcList = new Array(100).fill(changeElement);
+var durationList = new Array(100).fill(vss.msPerFrame);
+funcList.push(function(){alert('All done')});
+vss.run(funcList, durationList, 8);
+```
