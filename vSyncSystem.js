@@ -2,10 +2,19 @@ function vSyncSystem(msPerFrame) {
     vss = this;
     vss.msPerFrame = msPerFrame;
     vss.displayTimes = [];
-    vss.run = function(funcList, durationList, delayMs) {
+    vss.run = function(funcList, durationList, delayMs, nTimeQueriesPerFrame) {
         vss.funcList = funcList;
         vss.durationList = durationList;
-        vss.delayMs = delayMs;
+        if (delayMs == undefined) {
+            vss.delayMs = 8;
+        } else {
+            vss.delayMs = delayMs;
+        }
+        if (nTimeQueriesPerFrame == undefined) {
+            vss.nTimeQueriesPerFrame = 1;
+        } else {
+            vss.nTimeQueriesPerFrame = nTimeQueriesPerFrame;
+        }
         vss.funcIdx = 0;
         vss.nextChangeTime = performance.now(); // forces immediate update
         vss.frameIdxs = [];
@@ -20,17 +29,11 @@ function vSyncSystem(msPerFrame) {
         );
     }
     vss.frameLoop = function(shouldRecordTime) {
-        var measuredTime = performance.now();
-        var candidateFrameIdx = Math.round((measuredTime  - vss.t0) / vss.msPerFrame);
-        if (candidateFrameIdx <= vss.frameIdx) {
-            vss.frameIdx++; // No repeated frame idxs
-        } else {
-            vss.frameIdx = candidateFrameIdx; // Accounts for missed frames
-        }
-        vss.frameIdxs.push(vss.frameIdx);
+        var measuredTime = vss.getCurrentTime(vss.nTimeQueriesPerFrame);
+        var frameIdx = Math.round((measuredTime  - vss.t0)/vss.msPerFrame);
+        var frameTime = vss.t0 + frameIdx*vss.msPerFrame; // Regression-based estimate of the time at which changes become visible
+        // var frameTime = measuredTime; // The other option
         if (shouldRecordTime) {
-            var frameTime = vss.t0 + vss.frameIdx*vss.msPerFrame; // Regression-based estimate of the time at which changes become visible
-            // frameTime = measuredTime;
             vss.displayTimes.push(frameTime);
             if (vss.funcIdx == vss.funcList.length - 1) {
                 return;
@@ -39,7 +42,7 @@ function vSyncSystem(msPerFrame) {
             }
         }
         var shouldRecordNextTime = false;
-        if (Math.abs(measuredTime + vss.msPerFrame - vss.nextChangeTime) < Math.abs(measuredTime + 2*vss.msPerFrame - vss.nextChangeTime)){
+        if (Math.abs(frameTime + vss.msPerFrame - vss.nextChangeTime) < Math.abs(frameTime + 2*vss.msPerFrame - vss.nextChangeTime)){
             setTimeout(vss.funcList[vss.funcIdx], vss.delayMs);
             shouldRecordNextTime = true;
         }
@@ -62,12 +65,7 @@ function vSyncSystem(msPerFrame) {
         );
     }
     vss.recordFrame = function() {
-        var currTime  = 0, i; // Take average of multiple time points
-        for (i = 0; i < vss.nTimeQueriesPerFrame; i++) {
-            currTime  += performance.now(); // is there a faster way to do this?
-        }
-        currTime  = currTime  / vss.nTimeQueriesPerFrame;
-        vss.frameTimesForRegression.push(currTime );
+        vss.frameTimesForRegression.push(vss.getCurrentTime(vss.nTimeQueriesPerFrame));
         if (vss.frameTimesForRegression.length == vss.nFramesToRecord) {
             vss.computeMsPerFrame();
         } else {
@@ -86,7 +84,7 @@ function vSyncSystem(msPerFrame) {
             vss.getFrameRate(vss.nFramesToRecord, vss.nTimeQueriesPerFrame, vss.interFrameTolerance, vss.postFrameRateCalcCallback);
         } else { // Simple linear regression
             var y = vss.frameTimesForRegression;
-            var ymean = y.reduce(function(acc, curr){return acc + curr}, 0) / y.length;
+            var ymean = y.reduce(function(acc, curr){return acc + curr}, 0)/y.length;
             y = y.map(function(element){return element - ymean}); // Subtract mean for numerical stability
             var x = new Array(n);
             for (i = 0; i < n; i++) {
@@ -97,11 +95,18 @@ function vSyncSystem(msPerFrame) {
                 Sy += y[i];
                 Sxy += x[i]*y[i];
             }
-            var Sx = n*(n + 1) / 2;
-            var Sxx = n*(n + 1)*(2*n + 1) / 6;
-            vss.msPerFrame = (n*Sxy - Sx*Sy) / (n*Sxx - Sx**2);
+            var Sx = n*(n + 1)/2;
+            var Sxx = n*(n + 1)*(2*n + 1)/6;
+            vss.msPerFrame = (n*Sxy - Sx*Sy)/(n*Sxx - Sx**2);
             vss.t0 = Sy/n - vss.msPerFrame*Sx/n;
             vss.postFrameRateCalcCallback();
         }
+    }
+    vss.getCurrentTime = function(nQueries) {
+        var timeEstimate = 0, i; // Take average of multiple time points
+        for (i = 0; i < nQueries; i++) {
+            timeEstimate += performance.now();
+        }
+        return timeEstimate / nQueries;
     }
 }
