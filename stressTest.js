@@ -34,17 +34,13 @@ setTimeout(
                         for (i = 0; i < vss.frameTimes.length - 2; i++) {
                             interFrameIntervals.push(vss.frameTimes[i+1] - vss.frameTimes[i])
                         }
-                        for (i = 0; i < vss.measuredTimes.length - 2; i++) {
-                            mInterFrameIntervals.push(vss.measuredTimes[i+1] - vss.measuredTimes[i])
-                        }
                         interFrameIntervals.sort(function(a,b){return b-a});
-                        mInterFrameIntervals.sort(function(a,b){return b-a});
                         // Look at the beginning of these arrays and see if the number of unusually large elements matches the number of "blips" you saw
                     }
                 );
                 setTimeout( // Wait one second, then change element
                     function() {
-                        vss.run(funcList, durationList, 4, 10);
+                        vss.run(funcList, durationList, 10);
                     },1*1000
                 );
             }
