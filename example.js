@@ -17,7 +17,7 @@ var vss = new vSyncSystem;
 setTimeout(
     function() { // Wait three seconds, then estimate frame rate
         textElement.textContent = 'Getting frame rate...';
-        vss.getFrameRate(300, 1, 3,
+        vss.getFrameRate(60, 100, 3,
             function() {
                 alert('Estimated frame rate: ' + 1000/vss.msPerFrame);
                 // Then run the element-changing function
@@ -31,21 +31,28 @@ setTimeout(
                     durationList = durationList.concat(new Array(baseNChanges*i).fill((vss.msPerFrame)*(max + 1 - i)));
                 }*/
                 // Stress test; mistakes will be visible if they occur
-                var nStressTestChanges = 1000;
+                var nStressTestChanges = 300;
                 funcList = funcList.concat(new Array(nStressTestChanges).fill(changeElement));
                 durationList = durationList.concat(new Array(nStressTestChanges).fill(vss.msPerFrame));
                 funcList = funcList.concat(
                     function() {
                         interFrameIntervals = [];
+                        mInterFrameIntervals = [];
                         var i;
-                        for (i = 0; i < vss.displayTimes.length - 2; i++) { interFrameIntervals.push(vss.displayTimes[i+1] - vss.displayTimes[i] ) };
+                        for (i = 0; i < vss.displayTimes.length - 2; i++) {
+                            interFrameIntervals.push(vss.displayTimes[i+1] - vss.displayTimes[i])
+                        }
+                        for (i = 0; i < vss.displayTimes.length - 2; i++) {
+                            mInterFrameIntervals.push(vss.measuredTimes[i+1] - vss.measuredTimes[i])
+                        }
                         interFrameIntervals.sort(function(a,b){return b-a});
-                        // If only running the stress test, look at the beginning of this array and see if the number of unusually large elements matches the number of "blips" you saw
+                        mInterFrameIntervals.sort(function(a,b){return b-a});
+                        // If only running the stress test, look at the beginning of these arrays and see if the number of unusually large elements matches the number of "blips" you saw
                     }
                 );
                 setTimeout( // Wait one second, then change element
                     function() {
-                        vss.run(funcList, durationList, 8, 100);
+                        vss.run(funcList, durationList, 4, 100);
                     },1*1000
                 );
             }

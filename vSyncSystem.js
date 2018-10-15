@@ -2,6 +2,7 @@ function vSyncSystem(msPerFrame) {
     vss = this;
     vss.msPerFrame = msPerFrame;
     vss.displayTimes = [];
+    vss.measuredTimes = [];
     vss.run = function(funcList, durationList, delayMs, nTimeQueriesPerFrame) {
         vss.funcList = funcList;
         vss.durationList = durationList;
@@ -11,16 +12,17 @@ function vSyncSystem(msPerFrame) {
             vss.delayMs = delayMs;
         }
         if (nTimeQueriesPerFrame == undefined) {
-            vss.nTimeQueriesPerFrame = 1;
+            if (vss.nTimeQueriesPerFrame == undefined) {
+                vss.nTimeQueriesPerFrame = 1;
+            }
         } else {
             vss.nTimeQueriesPerFrame = nTimeQueriesPerFrame;
         }
         vss.funcIdx = 0;
-        vss.nextChangeTime = performance.now(); // forces immediate update
-        vss.frameIdxs = [];
+        vss.nextChangeTime = vss.getCurrentTime(vss.nTimeQueriesPerFrame); // forces immediate update
         window.requestAnimationFrame(
             function() {
-                window.requestAnimationFrame( // Doubling up for robustness
+                window.requestAnimationFrame(
                     function() {
                         vss.frameLoop(false);
                     }
@@ -35,6 +37,7 @@ function vSyncSystem(msPerFrame) {
         // var frameTime = measuredTime; // The other option
         if (shouldRecordTime) {
             vss.displayTimes.push(frameTime);
+            vss.measuredTimes.push(measuredTime);
             if (vss.funcIdx == vss.funcList.length - 1) {
                 return;
             } else {
@@ -59,7 +62,7 @@ function vSyncSystem(msPerFrame) {
         vss.postFrameRateCalcCallback = postFrameRateCalcCallback;
         vss.frameTimesForRegression = [];
         window.requestAnimationFrame(
-            function() { // Doubling up like this is more robust--else first inter-frame interval is very low
+            function() {
                 window.requestAnimationFrame(vss.recordFrame);
             }
         );
@@ -87,8 +90,8 @@ function vSyncSystem(msPerFrame) {
             var ymean = y.reduce(function(acc, curr){return acc + curr}, 0)/y.length;
             y = y.map(function(element){return element - ymean}); // Subtract mean for numerical stability
             var x = new Array(n);
-            for (i = 0; i < n; i++) {
-                x[i] = i+1;
+            for (i = 0; i < n; i++) { // Frame index variable
+                x[i] = i;
             }
             var Sy = 0, Sxy = 0;
             for (i = 0; i < n; i++) {
@@ -107,6 +110,6 @@ function vSyncSystem(msPerFrame) {
         for (i = 0; i < nQueries; i++) {
             timeEstimate += performance.now();
         }
-        return timeEstimate / nQueries;
+        return timeEstimate/nQueries;
     }
 }
