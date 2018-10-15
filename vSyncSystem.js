@@ -1,9 +1,9 @@
 function vSyncSystem(msPerFrame) {
     vss = this;
     vss.msPerFrame = msPerFrame;
-    vss.displayTimes = [];
-    vss.measuredTimes = [];
-    vss.run = function(funcList, durationList, delayMs, nTimeQueriesPerFrame) {
+    vss.measuredTimes = new Array();
+    vss.frameTimes = new Array();
+    vss.run = function(funcList, durationList, delayMs, nTimeQueriesPerFrame, missedFrameTolerance) {
         vss.funcList = funcList;
         vss.durationList = durationList;
         if (delayMs == undefined) {
@@ -18,8 +18,14 @@ function vSyncSystem(msPerFrame) {
         } else {
             vss.nTimeQueriesPerFrame = nTimeQueriesPerFrame;
         }
+        if (missedFrameTolerance == undefined) {
+            vss.missedFrameTolerance = vss.msPerFrame/2;
+        } else {
+            vss.missedFrameTolerance = missedFrameTolerance;
+        }
         vss.funcIdx = 0;
         vss.nextChangeTime = vss.getCurrentTime(vss.nTimeQueriesPerFrame); // forces immediate update
+        /*
         window.requestAnimationFrame(
             function() {
                 window.requestAnimationFrame(
@@ -29,15 +35,21 @@ function vSyncSystem(msPerFrame) {
                 );
             }
         );
+        */
+        setTimeout(vss.frameLoopNew, 0);
     }
     vss.frameLoop = function(shouldRecordTime) {
         var measuredTime = vss.getCurrentTime(vss.nTimeQueriesPerFrame);
         var frameIdx = Math.round((measuredTime  - vss.t0)/vss.msPerFrame);
         var frameTime = vss.t0 + frameIdx*vss.msPerFrame; // Regression-based estimate of the time at which changes become visible
-        // var frameTime = measuredTime; // The other option
+        if (measuredTime - frameTime <= vss.missedFrameTolerance  && vss.lastFrameIdx) {
+            frameIdx = vss.lastFrameIdx + 1;
+            frameTime = vss.t0 + frameIdx*vss.msPerFrame;
+        }
+        vss.lastFrameIdx = frameIdx;
         if (shouldRecordTime) {
-            vss.displayTimes.push(frameTime);
             vss.measuredTimes.push(measuredTime);
+            vss.frameTimes.push(frameTime);
             if (vss.funcIdx == vss.funcList.length - 1) {
                 return;
             } else {
@@ -46,7 +58,12 @@ function vSyncSystem(msPerFrame) {
         }
         var shouldRecordNextTime = false;
         if (Math.abs(frameTime + vss.msPerFrame - vss.nextChangeTime) < Math.abs(frameTime + 2*vss.msPerFrame - vss.nextChangeTime)){
-            setTimeout(vss.funcList[vss.funcIdx], vss.delayMs);
+            setTimeout(
+                function() {
+                    vss.funcList[vss.funcIdx]();
+                },
+                vss.delayMs + frameTime - measuredTime // Accounts for discrepancy between frameTime and measuredTime
+            );
             shouldRecordNextTime = true;
         }
         window.requestAnimationFrame(
@@ -54,6 +71,24 @@ function vSyncSystem(msPerFrame) {
                 vss.frameLoop(shouldRecordNextTime);
             }
         );
+    }
+    vss.frameLoopNew = function() {
+        var currTime = vss.getCurrentTime(vss.nTimeQueriesPerFrame);
+        var nextFrameTime = vss.t0 + Math.round((currTime  - vss.t0)/vss.msPerFrame)*vss.msPerFrame;
+        if (
+            Math.abs(nextFrameTime - vss.nextChangeTime) < Math.abs(nextFrameTime + vss.msPerFrame - vss.nextChangeTime)
+            &&
+            nextFrameTime - currTime > vss.missedFrameTolerance
+        )
+        {
+            vss.funcList[vss.funcIdx]();
+            vss.frameTimes.push(nextFrameTime);
+            if (vss.funcIdx == vss.funcList.length - 1) {
+                return;
+            }
+            vss.nextChangeTime = nextFrameTime + vss.durationList[vss.funcIdx++];
+        }
+        setTimeout(vss.frameLoopNew, 0);
     }
     vss.getFrameRate = function(nFramesToRecord, nTimeQueriesPerFrame, interFrameTolerance, postFrameRateCalcCallback) {
         vss.nFramesToRecord = nFramesToRecord;
