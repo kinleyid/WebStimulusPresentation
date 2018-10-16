@@ -28,7 +28,7 @@ function webStimulusPresentation() {
     }
     wsp.frameLoop = function() {
         var currTime = wsp.getCurrentTime(wsp.nTimeQueriesPerFrame);
-        var nLastTimesToKeep = 10;
+        var nLastTimesToKeep = 100;
         if (wsp.lastTimes.length == nLastTimesToKeep) {
             var nextFrameTime = wsp.lastTimes.reduce(function(acc, curr){return acc + curr}, 0)/nLastTimesToKeep
                                 + (nLastTimesToKeep/2 + 1.5)*wsp.msPerFrame;
@@ -45,7 +45,18 @@ function webStimulusPresentation() {
                     return;
                 }
                 wsp.nextChangeTime = nextFrameTime + wsp.durationList[wsp.funcIdx++];
-            } // Else missed frame or just unusually late call?
+            } else {
+                var nFramesMissed = (currTime - (nextFrameTime - wsp.msPerFrame))/wsp.msPerFrame;
+                var bias = 0.5; // Can bias toward interpretation as late rAF callback rather than missed frame
+                if (nFramesMissed - Math.floor(nFramesMissed) > bias) {
+                    nFramesMissed = Math.ceil(nFramesMissed);
+                } else {
+                    nFramesMissed = Math.floor(nFramesMissed);
+                }
+                wsp.lastTimes = wsp.lastTimes.map(function(x){return x + nFramesMissed*wsp.msPerFrame});
+                wsp.lastTimes.push(wsp.lastTimes.pop() - nFramesMissed*wsp.msPerFrame);
+                console.log('Missed frame x ' + nFramesMissed);
+            }
         }
         window.requestAnimationFrame(wsp.frameLoop);
     }
