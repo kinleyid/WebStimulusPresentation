@@ -40,7 +40,7 @@ setTimeout(
                 );
                 setTimeout( // Wait one second, then change element
                     function() {
-                        wsp.run(funcList, durationList, 10, 4);
+                        wsp.run(funcList, durationList, 10, 4, 8, 30, 0.8);
                     },1*1000
                 );
             }

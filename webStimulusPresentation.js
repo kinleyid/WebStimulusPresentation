@@ -1,6 +1,6 @@
 function webStimulusPresentation() {
     wsp = this;
-    wsp.run = function(funcList, durationList, nTimeQueriesPerFrame, delayMs, missedFrameTolerance) {
+    wsp.run = function(funcList, durationList, nTimeQueriesPerFrame, delayMs, missedFrameTolerance, nTimesToTrack, biasTowardLateCall) {
         wsp.funcList = funcList;
         wsp.durationList = durationList;
         if (nTimeQueriesPerFrame == undefined) {
@@ -11,14 +11,24 @@ function webStimulusPresentation() {
             wsp.nTimeQueriesPerFrame = nTimeQueriesPerFrame;
         }
         if (delayMs == undefined) {
-            wsp.delayMs = 8;
+            wsp.delayMs = 6;
         } else {
             wsp.delayMs = delayMs;
         }
         if (missedFrameTolerance == undefined) {
-            wsp.missedFrameTolerance = 4;
+            wsp.missedFrameTolerance = wsp.delayMs + 4;
         } else {
             wsp.missedFrameTolerance = missedFrameTolerance;
+        }
+        if (nTimesToTrack == undefined) {
+            wsp.nTimesToTrack = 30;
+        } else {
+            wsp.nTimesToTrack = nTimesToTrack;
+        }
+        if (biasTowardLateCall == undefined) {
+            biasTowardLateCall = 0.5; // No bias. Some bias is better in my experience.
+        } else {
+            wsp.biasTowardLateCall = biasTowardLateCall;
         }
         wsp.funcIdx = 0;
         wsp.frameTimes = new Array();
@@ -28,10 +38,9 @@ function webStimulusPresentation() {
     }
     wsp.frameLoop = function() {
         var currTime = wsp.getCurrentTime(wsp.nTimeQueriesPerFrame);
-        var nLastTimesToKeep = 100;
-        if (wsp.lastTimes.length == nLastTimesToKeep) {
-            var nextFrameTime = wsp.lastTimes.reduce(function(acc, curr){return acc + curr}, 0)/nLastTimesToKeep
-                                + (nLastTimesToKeep/2 + 1.5)*wsp.msPerFrame;
+        if (wsp.lastTimes.length == wsp.nTimesToTrack) {
+            var nextFrameTime = wsp.lastTimes.reduce(function(acc, curr){return acc + curr}, 0)/wsp.nTimesToTrack
+                                + (wsp.nTimesToTrack/2 + 1.5)*wsp.msPerFrame;
             wsp.lastTimes.shift();
         } else {
             var nextFrameTime = currTime + wsp.msPerFrame;
@@ -45,16 +54,15 @@ function webStimulusPresentation() {
                     return;
                 }
                 wsp.nextChangeTime = nextFrameTime + wsp.durationList[wsp.funcIdx++];
-            } else {
-                var nFramesMissed = (currTime - (nextFrameTime - wsp.msPerFrame))/wsp.msPerFrame;
-                var bias = 0.5; // Can bias toward interpretation as late rAF callback rather than missed frame
-                if (nFramesMissed - Math.floor(nFramesMissed) > bias) {
-                    nFramesMissed = Math.ceil(nFramesMissed);
+            } else { // Was there a missed rAF callback?
+                var nCallbacksMissed = (currTime - (nextFrameTime - wsp.msPerFrame))/wsp.msPerFrame;
+                if (nCallbacksMissed - Math.floor(nCallbacksMissed) > wsp.biasTowardLateCall) {
+                    nCallbacksMissed = Math.ceil(nCallbacksMissed);
                 } else {
-                    nFramesMissed = Math.floor(nFramesMissed);
+                    nCallbacksMissed = Math.floor(nCallbacksMissed);
                 }
-                wsp.lastTimes = wsp.lastTimes.map(function(x){return x + nFramesMissed*wsp.msPerFrame});
-                wsp.lastTimes.push(wsp.lastTimes.pop() - nFramesMissed*wsp.msPerFrame);
+                wsp.lastTimes = wsp.lastTimes.map(function(x){return x + nCallbacksMissed*wsp.msPerFrame});
+                wsp.lastTimes.push(wsp.lastTimes.pop() - nCallbacksMissed*wsp.msPerFrame);
             }
         }
         window.requestAnimationFrame(wsp.frameLoop);
