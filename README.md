@@ -1,5 +1,4 @@
 # WebStimulusPresentation
-Attempts to provide better control over when and for how long stimuli are displayed on the web.
 
 ## Introduction
 
@@ -16,21 +15,21 @@ This library tries to solve the second problem by using ```requestAnimationFrame
 ### Initializing
 
 See example.html and example.js.
-When initializing the library, call the resulting variable ```vss``` (that's how it refers to itself).
+When initializing the library, call the resulting variable ```wsp``` (that's how it refers to itself).
 ```javascript
-var vss = new vSyncSystem();
+var wsp = new webStimulusPresentation();
 ```
 
 ### Estimating frame rate
 
-The frame rate is calculated with simple linear regression (as suggested on <a href='https://www.vsynctester.com/howtocomputevsync.html'>vsynctester.com</a>) by calling ```vss.getFrameRate```. The arguments passed in are the number of ```requestAnimationFrame``` calls to make, the number of ```performance.now``` calls per ```requestAnimationFrame``` callback, the maximum number of milliseconds by which any calculated inter-frame interval can be off from the median without causing ```getFrameRate``` to start over, and a function to call after the frame rate has been calculated:
+The frame rate is calculated with simple linear regression (as suggested on <a href='https://www.vsynctester.com/howtocomputevsync.html'>vsynctester.com</a>) by calling ```wsp.getFrameRate```. The arguments passed in are the number of ```requestAnimationFrame``` calls to make, the number of ```performance.now``` calls per ```requestAnimationFrame``` callback, the maximum number of milliseconds by which any calculated inter-frame interval can be off from the median without causing ```getFrameRate``` to start over, and a function to call after the frame rate has been calculated:
 ```javascript
-vss.getFrameRate(60, 10, 3, function(){alert('Frame rate = ' + 1000/vss.msPerFrame)});
+wsp.getFrameRate(60, 10, 3, function(){alert('Frame rate = ' + 1000/wsp.msPerFrame)});
 ```
 
 ### Displaying stimuli
 
-Once the frame rate has been calculated, you can create an array of functions that will alter the DOM and an array of corresponding durations (in milliseconds) for which the alterations should be visible. You then pass these as arguments to ```vss.run``` along with the number of ```performance.now``` calls to make whenever the current time is estimated (defaults to the value passed to ```vss.getFrameRate``` or 1) and the minimum number of milliseconds before the next screen update a DOM alteration will be performed (if the screen is going to update in t + 0.1 ms, changes made at t ms won't be visible so you might as well record a missed frame and wait til the next one. If this value is set to 0, frames will be missed without being recorded as such. It defaults to 4):
+Once the frame rate has been calculated, you can create an array of functions that will alter the DOM and an array of corresponding durations (in milliseconds) for which the alterations should be visible. You then pass these as arguments to ```wsp.run``` along with the number of ```performance.now``` calls to make whenever the current time is estimated (defaults to the value passed to ```wsp.getFrameRate``` or 1) and the minimum number of milliseconds before the next screen update a DOM alteration will be performed (if the screen is going to update in t + 0.1 ms, changes made at t ms won't be visible so you might as well record a missed frame and wait til the next one. If this value is set to 0, frames will be missed without being recorded as such. It defaults to 4):
 ```javascript
 function changeElement() {
     if (textElement.textContent == 'One') {
@@ -42,5 +41,5 @@ function changeElement() {
 var funcList = new Array(100).fill(changeElement);
 var durationList = new Array(100).fill(vss.msPerFrame);
 funcList.push(function(){alert('All done')});
-vss.run(funcList, durationList, 10, 4);
+wsp.run(funcList, durationList, 10, 4);
 ```
