@@ -81,6 +81,7 @@ function webStimulusPresentation() {
             var Sxx = n*(n + 1)*(2*n + 1)/6;
             wsp.msPerFrame = (n*Sxy - Sx*Sy)/(n*Sxx - Sx**2);
             wsp.t0 = Sy/n - wsp.msPerFrame*Sx/n;
+            wsp.frameIdx = x;
             wsp.postFrameRateCalcCallback();
         }
     }
