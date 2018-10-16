@@ -55,7 +55,6 @@ function webStimulusPresentation() {
                 }
                 wsp.lastTimes = wsp.lastTimes.map(function(x){return x + nFramesMissed*wsp.msPerFrame});
                 wsp.lastTimes.push(wsp.lastTimes.pop() - nFramesMissed*wsp.msPerFrame);
-                console.log('Missed frame x ' + nFramesMissed);
             }
         }
         window.requestAnimationFrame(wsp.frameLoop);
