@@ -16,26 +16,36 @@ function webStimulusPresentation() {
             wsp.delayMs = delayMs;
         }
         if (missedFrameTolerance == undefined) {
-            wsp.missedFrameTolerance = 6;
+            wsp.missedFrameTolerance = 4;
         } else {
             wsp.missedFrameTolerance = missedFrameTolerance;
         }
         wsp.funcIdx = 0;
         wsp.frameTimes = new Array();
+        wsp.lastTimes = new Array();
         wsp.nextChangeTime = wsp.getCurrentTime(wsp.nTimeQueriesPerFrame); // forces immediate update
         wsp.doubleRAF(wsp.frameLoop);
     }
     wsp.frameLoop = function() {
         var currTime = wsp.getCurrentTime(wsp.nTimeQueriesPerFrame);
-        var nextFrameTime = currTime + wsp.msPerFrame; // Maybe use local regression for this
-        if (Math.abs(nextFrameTime - wsp.nextChangeTime) < Math.abs(nextFrameTime + wsp.msPerFrame - wsp.nextChangeTime)
-                && nextFrameTime - currTime > wsp.missedFrameTolerance){
-            setTimeout(wsp.funcList[wsp.funcIdx], wsp.delayMs); // Adjust for late rAF callback fires
-            wsp.frameTimes.push(nextFrameTime);
-            if (wsp.funcIdx == wsp.funcList.length - 1) {
-                return;
-            }
-            wsp.nextChangeTime = nextFrameTime + wsp.durationList[wsp.funcIdx++];
+        var nLastTimesToKeep = 10;
+        if (wsp.lastTimes.length == nLastTimesToKeep) {
+            var nextFrameTime = wsp.lastTimes.reduce(function(acc, curr){return acc + curr}, 0)/nLastTimesToKeep
+                                + (nLastTimesToKeep/2 + 1.5)*wsp.msPerFrame;
+            wsp.lastTimes.shift();
+        } else {
+            var nextFrameTime = currTime + wsp.msPerFrame;
+        }
+        wsp.lastTimes.push(currTime);
+        if (Math.abs(nextFrameTime - wsp.nextChangeTime) < Math.abs(nextFrameTime + wsp.msPerFrame - wsp.nextChangeTime)) {
+            if (nextFrameTime - currTime > wsp.missedFrameTolerance) {
+                setTimeout(wsp.funcList[wsp.funcIdx], wsp.delayMs - currTime - (nextFrameTime - wsp.msPerFrame)); // Adjust for late rAF callback fires
+                wsp.frameTimes.push(nextFrameTime);
+                if (wsp.funcIdx == wsp.funcList.length - 1) {
+                    return;
+                }
+                wsp.nextChangeTime = nextFrameTime + wsp.durationList[wsp.funcIdx++];
+            } // Else missed frame or just unusually late call?
         }
         window.requestAnimationFrame(wsp.frameLoop);
     }
