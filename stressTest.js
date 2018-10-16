@@ -23,7 +23,7 @@ setTimeout(
                 // Then run the element-changing function
                 textElement.textContent = 'One';
                 // Stress test; mistakes will be visible if they occur
-                var nStressTestChanges = 3600;
+                var nStressTestChanges = 600;
                 funcList = funcList.concat(new Array(nStressTestChanges).fill(changeElement));
                 durationList = durationList.concat(new Array(nStressTestChanges).fill(wsp.msPerFrame));
                 funcList = funcList.concat(
