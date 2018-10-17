@@ -22,14 +22,27 @@ var wsp = new webStimulusPresentation();
 
 ### Estimating frame rate
 
-The frame rate is calculated with simple linear regression (as suggested on <a href='https://www.vsynctester.com/howtocomputevsync.html'>vsynctester.com</a>) by calling ```wsp.getFrameRate```. The arguments passed in are the number of ```requestAnimationFrame``` calls to make, the number of ```performance.now``` calls per ```requestAnimationFrame``` callback, the maximum number of milliseconds by which any calculated inter-frame interval can be off from the median without causing ```getFrameRate``` to start over, and a function to call after the frame rate has been calculated:
+The frame rate is calculated with simple linear regression (as suggested on <a href='https://www.vsynctester.com/howtocomputevsync.html'>vsynctester.com</a>) by calling ```wsp.getFrameRate```. The arguments passed in are:
+1. the number of ```requestAnimationFrame``` calls to make per attempt at estimating frame rate
+2. the number of ```performance.now``` calls per ```requestAnimationFrame``` callback
+3. the maximum number of milliseconds by which any calculated inter-frame interval can be off from the median without causing ```getFrameRate``` to start over
+4. the maximum number of times ```getFrameRate``` can be repeatedly called without loosening up (3.)
+5. the number of ms by which (3.) is incremented each time ```getFrameRate``` calls itself beyond the number of times specified by (4.)
+6. a function to call after the frame rate has been calculated
 ```javascript
-wsp.getFrameRate(60, 10, 3, function(){alert('Frame rate = ' + 1000/wsp.msPerFrame)});
+wsp.getFrameRate(60, 10, 3, 10, 1, function(){alert('Frame rate = ' + 1000/wsp.msPerFrame)});
 ```
 
 ### Displaying stimuli
 
-Once the frame rate has been calculated, you can create an array of functions that will alter the DOM and an array of corresponding durations (in milliseconds) for which the alterations should be visible. You then pass these as arguments to ```wsp.run``` along with the number of ```performance.now``` calls to make whenever the current time is estimated (defaults to the value passed to ```wsp.getFrameRate``` or 1) and the minimum number of milliseconds before the next screen update a DOM alteration will be performed (if the screen is going to update in t + 0.1 ms, changes made at t ms won't be visible so you might as well record a missed frame and wait til the next one. If this value is set to 0, frames will be missed without being recorded as such. It defaults to 4):
+Once the frame rate has been calculated, you can call ```wsp.run``` to display your stimuli. It takes the following arguments:
+1. an array of DOM-altering functions
+2. an array of the durations for which the alterations specified by (1.) should be visible
+3. the number of ```performance.now``` calls per ```requestAnimationFrame``` callback (defaults to the value passed to ```wsp.getFrameRate``` or ```1```)
+4. the number of milliseconds passed to ```setTimeout``` in the ```requestAnimationFrame``` callbacks (adjusted for jitter in when the callbacks actually fire)
+5. the minimum number of milliseconds by which the ```requestAnimationFrame``` callback must be ahead of the next expected screen update without counting the frame as missed (it makes no sense to try to alter the DOM, say, 0.1 ms before the screen is expected to update--your alterations won't be visible)
+6. the number of previous ```requestAnimationFrame``` callback times to keep track of in order to predict the next screen update time
+7. the fraction of an interframe interval beyond the expected time a ```requestAnimationFrame``` callback has to fire for a missed callback to be registered
 ```javascript
 function changeElement() {
     if (textElement.textContent == 'One') {
@@ -41,5 +54,5 @@ function changeElement() {
 var funcList = new Array(100).fill(changeElement);
 var durationList = new Array(100).fill(vss.msPerFrame);
 funcList.push(function(){alert('All done')});
-wsp.run(funcList, durationList, 10, 4);
+wsp.run(funcList, durationList, 10, 4, 6, 10, 0.8);
 ```
