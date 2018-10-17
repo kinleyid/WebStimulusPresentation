@@ -64,10 +64,12 @@ function webStimulusPresentation() {
         wsp.lastTimes.push(currTime);
         window.requestAnimationFrame(wsp.frameLoop);
     }
-    wsp.getFrameRate = function(nFramesToRecord, nTimeQueriesPerFrame, interFrameTolerance, postFrameRateCalcCallback) {
+    wsp.getFrameRate = function(nFramesToRecord, nTimeQueriesPerFrame, interFrameTolerance, nNoIncrementAttempts, toleranceIncrement, postFrameRateCalcCallback) {
         wsp.nFramesToRecord = nFramesToRecord;
         wsp.nTimeQueriesPerFrame = nTimeQueriesPerFrame;
         wsp.interFrameTolerance = interFrameTolerance;
+        wsp.noIncrementAttempts = noIncrementAttempts;
+        wsp.toleranceIncrement = toleranceIncrement;
         wsp.postFrameRateCalcCallback = postFrameRateCalcCallback;
         wsp.frameTimesForRegression = [];
         wsp.doubleRAF(wsp.recordFrame);
@@ -89,7 +91,12 @@ function webStimulusPresentation() {
         var IFImedian = IFIs.sort(function(a, b){return a - b})[Math.ceil((n - 1)/2)];
         // If any inter-frame interval differs from the median by more than wsp.interFrameTolerance, start over
         if (IFImedian - IFIs[0] > wsp.interFrameTolerance || IFIs[n - 2] - IFImedian > wsp.interFrameTolerance) {
-            wsp.getFrameRate(wsp.nFramesToRecord, wsp.nTimeQueriesPerFrame, wsp.interFrameTolerance, wsp.postFrameRateCalcCallback);
+            wsp.getFrameRate(wsp.nFramesToRecord,
+                             wsp.nTimeQueriesPerFrame,
+                             wsp.nNoIncrementAttempts > 0? wsp.interFrameTolerance : wsp.interFrameTolerance + wsp.toleranceIncrement,
+                             wsp.nNoIncrementAttempts > 0? wsp.nNoIncrementAttempts - 1 : 0,
+                             wsp.toleranceIncrement,
+                             wsp.postFrameRateCalcCallback);
         } else { // Simple linear regression
             var y = wsp.frameTimesForRegression;
             var ymean = y.reduce(function(acc, curr){return acc + curr}, 0)/y.length;
